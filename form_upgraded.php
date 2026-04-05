@@ -92,4 +92,6 @@ while ($row = $result->fetch_assoc()) {
     echo "</div><hr>";
 }
 
+echo "this is the user:" . $_SESSION['username']; //test to see if the session is destroyed or not
+
 ?>

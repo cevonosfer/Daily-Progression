@@ -1,3 +1,5 @@
+<?php session_start(); ?>
+
 <!DOCTYPE html>
 <html>
 
@@ -38,8 +40,9 @@ if (isset($_POST['login'])) {
 		$user = $result->fetch_assoc();
 
 		if (password_verify($password, $user['password'])) {
-			header("Location: https://www.google.com/");
-			echo "Login successful!";
+			$_SESSION['username'] = $user['username'];
+			$_SESSION['logged-in'] = true;
+			header("Location: dashboard.php");
 		} else {
 			echo "Wrong password";
 		}
