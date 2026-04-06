@@ -33,8 +33,11 @@ if (isset($_POST['login'])) {
 	$username = trim($_POST['username'] ?? "");
 	$password = trim($_POST['password'] ?? "");
 	
-	$sql = "SELECT * FROM login WHERE username='$username'";
-	$result = $conn->query($sql);
+	$prepared = $conn->prepare("SELECT * FROM login WHERE username = ?");
+	$prepared->bind_param("s", $username);
+	$prepared->execute();
+
+	$result = $prepared->get_result();
 
 	if ($result->num_rows === 1) {
 		$user = $result->fetch_assoc();

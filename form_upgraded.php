@@ -71,9 +71,10 @@ if(strlen($username) >= 15)
 if (empty($errors)) 
 	{echo nl2br("there was no error\n");
 	echo nl2br("you are succesfully registered\n");
-	$conn->query(
-    "INSERT INTO login (name, mail, age, password, username) 
-     VALUES ('$name', '$email', '$age', '$hashed', '$username')");}
+
+	$prepared = $conn->prepare("INSERT INTO login (name, mail, age, password, username) VALUES (?, ?, ?, ?, ?)");
+	$prepared->bind_param("ssiss", $username, $email, $age, $hashed, $username);
+	$prepared->execute();}
 	
 	if ($conn->connect_error) {
  	   die("Connection failed");
