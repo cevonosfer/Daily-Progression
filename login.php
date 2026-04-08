@@ -33,7 +33,7 @@ if (isset($_POST['login'])) {
 	$username = trim($_POST['username'] ?? "");
 	$password = trim($_POST['password'] ?? "");
 	
-	$prepared = $conn->prepare("SELECT * FROM login WHERE username = ?");
+	$prepared = $conn->prepare("SELECT * FROM users WHERE username = ?");
 	$prepared->bind_param("s", $username);
 	$prepared->execute();
 

@@ -17,8 +17,8 @@ if(isset($_POST['login']))
 		<input name="name" id="name" type="text" > <br>
 		<label for="age">Age: </label>
 		<input name="age" id="age" type="number"> <br>
-		<label for="email"> Email: </label>
-		<input name="email" id="email" type="text"> <br>
+		<label for="mail"> mail: </label>
+		<input name="mail" id="mail" type="text"> <br>
 		<label for="password">Password: </label>
 		<input type="password" name="password"> <br>
 		<label for="username">Username: </label>
@@ -48,7 +48,7 @@ if($conn)
 
 
 $name = trim($_POST['name']);
-$email = trim($_POST['email']);
+$mail = trim($_POST['mail']);
 $age = trim($_POST['age']);
 $password = trim($_POST['password']);
 $username = trim($_POST['username']);
@@ -59,8 +59,8 @@ $errors = [];
 if (!preg_match("/^[A-Za-z\s]+$/" , $name)) 
 	{$errors[] = "only use letters";}
 
-if (!filter_var ($email , FILTER_VALIDATE_EMAIL)) 
-	{$errors[] = "invalid email";}
+if (!filter_var ($mail , FILTER_VALIDATE_EMAIL)) 
+	{$errors[] = "invalid mail";}
 
 if (!preg_match("/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/", $password))
 	{$errors[] = "doesnt meet password requirements";}
@@ -72,8 +72,8 @@ if (empty($errors))
 	{echo nl2br("there was no error\n");
 	echo nl2br("you are succesfully registered\n");
 
-	$prepared = $conn->prepare("INSERT INTO login (name, mail, age, password, username) VALUES (?, ?, ?, ?, ?)");
-	$prepared->bind_param("ssiss", $username, $email, $age, $hashed, $username);
+	$prepared = $conn->prepare("INSERT INTO users (name, mail, age, password, username) VALUES (?, ?, ?, ?, ?)");
+	$prepared->bind_param("ssiss", $username, $mail, $age, $hashed, $username);
 	$prepared->execute();}
 	
 	if ($conn->connect_error) {
@@ -83,7 +83,7 @@ else {foreach($errors as $error){
 	echo nl2br("$error\n");
 }} 
 
-$result = $conn->query("SELECT * FROM login");
+$result = $conn->query("SELECT * FROM users");
 
 echo "<h3>Registered Users:</h3>";
 
