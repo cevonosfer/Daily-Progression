@@ -1,4 +1,11 @@
-<?php session_start(); ?>
+<?php
+session_start();
+require 'config.php';
+if (!isset($_SESSION['logged-in'])) {
+    header("Location: login.php");
+    exit();
+}
+?>
 
 <!DOCTYPE html>
 <html>
@@ -18,27 +25,16 @@
 
 
 <?php
-
-$db_server = "localhost";
-$db_user = "root";
-$db_password = "";
-$db_name = "login";
-$conn = "";
 $task_name = trim($_POST['task'] ?? "");
 $user_id = $_SESSION['user_id'];
+$task_id = $_POST['task_id'] ?? "";
 
-try {$conn = mysqli_connect($db_server , $db_user , $db_password , $db_name);}
-catch (mysqli_sql_exception) {echo "connection error";}
-$is_completed = $conn -> query("SELECT is_done FROM tasks");
-
-
-echo "welcome" . $_SESSION['username'];
+echo "welcome " . $_SESSION['username'];
 
 if (isset($_POST['view']))
     {
         $tasks =  $conn -> query("SELECT * FROM tasks WHERE user_id=$user_id");
-        while ($row = $tasks->fetch_assoc()) { ?>
-        <?php foreach ($tasks as $task): ?>
+        while ($task = $tasks->fetch_assoc()) { ?>
             <div>
                 <?php echo htmlspecialchars($task['name']); ?>
                 <?php echo htmlspecialchars($task['is_done']); ?>
@@ -53,22 +49,25 @@ if (isset($_POST['view']))
                     <button type="submit" name="delete" >Delete</button>
                 </form>
             </div>
-            <?php endforeach; ?>
-            <?php }
+            
+    <?php }
     }
-    $task_id = $_POST['task_id'];
     
-if (isset($_POST['delete'])) 
+if(isset($_POST['delete'])) 
     {
-    $conn -> query("DELETE FROM tasks WHERE id = $task_id ");
+    $prepared1 = $conn->prepare("DELETE FROM tasks WHERE id = ?");
+    $prepared1->bind_param("i", $task_id);
+    $prepared1->execute();   
     }
 
-if (isset($_POST['complete']) && ($conn -> query("SELECT is_done FROM tasks WHERE id = $task_id")) != 'done' )
+if(isset($_POST['complete']) && ($conn -> query("SELECT is_done FROM tasks WHERE id = $task_id")) != 'done' )
     {
-    $conn -> query("UPDATE tasks SET is_done='done' WHERE id = $task_id");
+    $prepared2 = $conn->prepare("DELETE FROM tasks WHERE id = ?");
+    $prepared2->bind_param("i", $task_id);
+    $prepared2->execute();
     }   
 
-if (isset($_POST['add']) && !empty($task_name)) 
+if(isset($_POST['add']) && !empty($task_name)) 
     {
     {
     $prepared = $conn->prepare("INSERT INTO tasks (name, user_id) VALUES (?, ?)");
@@ -77,11 +76,9 @@ if (isset($_POST['add']) && !empty($task_name))
     }
     }
 
-
 if(isset($_POST['logout'])) {
     session_unset();
     session_destroy();
     header("Location: form_upgraded.php");
 }
-
 ?>

@@ -1,13 +1,11 @@
-<?php session_start(); ?>
-
+<?php session_start(); 
+require 'config.php';
+?>
 <!DOCTYPE html>
 <html>
-
 <head>
 	<title>php test</title>
-
 </head>
-
 <body>
 	<form action="" method="post">
 		<label for="username">Username: </label>
@@ -16,19 +14,10 @@
 		<input type="password" name="password"> <br>
 		<button type="submit" name="login">Login</button> <br>
 	</form>
-
 </body>
-
 </html>
 
 <?php
-
-try {$conn = mysqli_connect("localhost" , "root" , "" , "login");}
-catch (mysqli_sql_exception) {echo "connection error";}
-
-
-
-
 if (isset($_POST['login'])) {
 	$username = trim($_POST['username'] ?? "");
 	$password = trim($_POST['password'] ?? "");
@@ -47,6 +36,7 @@ if (isset($_POST['login'])) {
 			$_SESSION['user_id'] = $user['user_id'];
 			$_SESSION['logged-in'] = true;
 			header("Location: dashboard.php");
+			exit();
 		} else {
 			echo "Wrong password";
 		}
@@ -54,5 +44,4 @@ if (isset($_POST['login'])) {
 		echo "User not found";
 	}
 }
-
 ?>

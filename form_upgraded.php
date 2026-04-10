@@ -1,14 +1,14 @@
 <?php
+session_start();
+require 'config.php';
 if(isset($_POST['login']))
 	{header("Location: login.php");
 	exit();}
 ?>
 <!DOCTYPE html>
 <html>
-
 <head>
 	<title>php test</title>
-
 </head>
 
 <body>
@@ -23,30 +23,13 @@ if(isset($_POST['login']))
 		<input type="password" name="password"> <br>
 		<label for="username">Username: </label>
 		<input type="text" name="username"> <br>
-		<button type="submit">Register</button> <br>
+		<button type="submit" name="register">Register</button> <br>
 		<button type="submit" name="login">Login</button> <br>
 	</form>
-
 </body>
-
 </html>
 
 <?php
-
-$db_server = "localhost";
-$db_user = "root";
-$db_password = "";
-$db_name = "login";
-$conn = "";
-
-try {$conn = mysqli_connect($db_server , $db_user , $db_password , $db_name);}
-catch (mysqli_sql_exception) {echo "connection error";}
-
-
-if($conn) 
-    {echo nl2br("you are connected\n");}
-
-
 $name = trim($_POST['name']);
 $mail = trim($_POST['mail']);
 $age = trim($_POST['age']);
@@ -55,6 +38,8 @@ $username = trim($_POST['username']);
 $hashed = password_hash($password , PASSWORD_DEFAULT);
 
 $errors = [];
+if(empty($name) || empty($mail) || empty($age) || empty($password) || empty($username))
+	{$errors[] = "Please fill all the sections!";}
 
 if (!preg_match("/^[A-Za-z\s]+$/" , $name)) 
 	{$errors[] = "only use letters";}
@@ -68,12 +53,12 @@ if (!preg_match("/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$
 if(strlen($username) >= 15)
 	{$errors[] = "username should be max. 15 characters";}
 
-if (empty($errors)) 
+if ($_POST['register'] && empty($errors)) 
 	{echo nl2br("there was no error\n");
 	echo nl2br("you are succesfully registered\n");
 
 	$prepared = $conn->prepare("INSERT INTO users (name, mail, age, password, username) VALUES (?, ?, ?, ?, ?)");
-	$prepared->bind_param("ssiss", $username, $mail, $age, $hashed, $username);
+	$prepared->bind_param("ssiss", $name, $mail, $age, $hashed, $username);
 	$prepared->execute();}
 	
 	if ($conn->connect_error) {
@@ -83,16 +68,5 @@ else {foreach($errors as $error){
 	echo nl2br("$error\n");
 }} 
 
-$result = $conn->query("SELECT * FROM users");
-
-echo "<h3>Registered Users:</h3>";
-
-while ($row = $result->fetch_assoc()) {
-    echo "<div>";
-    echo "Username: " . htmlspecialchars($row["username"]) . "<br>";
-    echo "</div><hr>";
-}
-
 echo "this is the user:" . $_SESSION['username']; //test to see if the session is destroyed or not
-
 ?>
