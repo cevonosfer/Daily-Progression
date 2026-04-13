@@ -4,6 +4,11 @@ require 'config.php';
 if(isset($_POST['login']))
 	{header("Location: login.php");
 	exit();}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST')
+	{header("Location: " . $_SERVER['PHP_SELF']);
+	exit();
+	}
 ?>
 <!DOCTYPE html>
 <html>

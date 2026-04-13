@@ -62,8 +62,8 @@ if(isset($_POST['delete']))
 
 if(isset($_POST['complete']) && ($conn -> query("SELECT is_done FROM tasks WHERE id = $task_id")) != 'done' )
     {
-    $prepared2 = $conn->prepare("DELETE FROM tasks WHERE id = ?");
-    $prepared2->bind_param("i", $task_id);
+    $prepared2 = $conn->prepare("UPDATE tasks SET is_done='done' WHERE id = ?");
+    $prepared2->bind_param("s", $task_id);
     $prepared2->execute();
     }   
 
