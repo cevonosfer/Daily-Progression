@@ -1,0 +1,85 @@
+ZjLjTmM6FvvyRnrb2rfNWOZOTa6ip5If
+bandit1 (cat command)
+
+263JGJPfgU6LtdEvgfWU1XP5yac29mFx
+bandit2 (cat command syntax)
+
+MNk8KNH3Usiio41PRUEoDFPqfxLPlSmx
+bandit3 (cat command snytax)
+
+2WmrDFRmJIq3IPxneAaMGhap0pFhF3NJ
+bandit4 (cat and ls command)
+
+4oQYVPkxZOOEOO5pTW81FB8j8lxXGUQw
+bandit5 (cat,ls and file command)
+
+HWasnPhtq9AVKe0dmk45nxy20cvUa6EG
+bandit6 (no need to meet all the
+requirements just "find -size 1033c")
+
+morbNTDkSW6jIlUc0ymOdMaLnOlFVAaj
+bandit7 (specifications for find command
+but there is also "2>/dev/null")
+
+dfwvzFQi4mU0wfNbFOe9RoWskMLg7eEc
+bandit8 (grep)
+
+4CKMh1JI91bUIZZPXDqGanal4xvAg0JM
+bandit9 (sort and uniq)
+FGUW5ilLVJrxX9kMYMmlN4MgbpfMiqey
+bandit10 (strings and grep)
+
+dtR173fZKb0RRsDFSGsg2RWnpNVj3qRr
+bandit11 (base64 -d option and cat)
+
+7x16WNeHIi5YkIhWsfFIqoognUTyj9Q4
+bandit12 (it is about rot13 substitution
+encryption which i absolutely had no idea,
+solution doesnt belong to me "cat data.txt | tr 'A-Za-z' 'N-ZA-Mn-za-m')
+
+FO5dwFsc0cbaIiH0h8J2eUks2vdTDwAn
+bandit13 (it is about data compression
+and looking at the first chars of the chars
+of the hexdumped files, idk just beats me
+looked it up on internet)
+
+RSA-key
+MU4VWeTyJk8ROof1qqmcBPaLh7lDCPvS
+bandit14 (scp command to fetch the rsa key
+file from the host)
+
+8xCjnmgoKbGLhHFAZlGE5Tmu4M2tKJQo
+bandit15 (use nc to make a connection)
+
+kSkvUpMQ7lBYyCM4GBPvCvT1BfWRy0Dx
+bandit16 (use openssl to make a connection)
+
+EReVavePLFHtFlFsjn3hyzMlvSuSAcRD
+bandit17 (use nmap to find which port is
+which and connect with openssl)
+
+x2gLTTjFwMOhQ8oWNbMN362QKxfRqGlO
+bandit18 (diff)
+
+cGWpMaKXVwDUNgPAVJbWYuGHVn9zl3j8
+bandit19 (you can execute cat through
+ssh or first download it with scp and
+then read it doesnt matter)
+
+0qXahG8ZjOVMN9Ghs7iOWsCfZyXOUbYO
+bandit20 (use the given bash file to
+run the command as another user)
+
+EeoULMCra2q0dSkYj561DX7s1CpBuOBt
+bandit21 (echo the current password to nc
+connection using piping)
+
+tRae0UfB9v0UzbCdn9cY0gQnds9GF58Q
+bandit22 (just read the bash script inside
+cron file with cat)
+
+0Zf11ioIjMVN551jX3CmStKLYqjk54Ga
+bandit23 (again reading the cron file and
+making sense out of the bash script)
+
+
