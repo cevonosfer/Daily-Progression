@@ -1,7 +1,10 @@
 <?php
 require 'api\tasks.php';
+require 'api\middleware.php';
 require 'api\response.php';
 $method = $_SERVER['REQUEST_METHOD'];
+$user_id = authenticate();
+$id = $data['task_id'] ?? null;
 
 switch ($method) {
     case "GET":
@@ -13,11 +16,11 @@ switch ($method) {
         break;
 
     case "DELETE":
-        deleteTask($conn, $user_id);
+        deleteTask($conn, $id,$user_id);
         break;
 
     case "PUT":
-        completeTask($conn, $user_id);
+        completeTask($conn, $id,$user_id);
         break;
 
     default:

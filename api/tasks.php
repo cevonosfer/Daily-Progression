@@ -3,17 +3,13 @@ require 'api\db.php';
 require 'api\response.php';
 header("Content-Type: application/json");
 
-if (!isset($_SESSION['user_id'])) {
-    sendResponse("error", "Unauthorized", null, 401);
-}
-
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
-$user_id = $_SESSION['user_id'];
-$id = $data['task_id'];
+$user_id = authenticate();
+$id = $data['task_id'] ?? null;
 require 'api\router.php';
 
-function createTask($conn,$data,$user_id){
+function createTask($conn,$user_id,$data){
 $task = $data['task'];
 
 $stmt = $conn->prepare("INSERT INTO tasks (name, user_id) VALUES (?, ?)");
@@ -25,7 +21,10 @@ if ($stmt->execute()) {
 }
 
 function viewTask($conn,$user_id){
-$result = $conn->query("SELECT * FROM tasks WHERE user_id = $user_id");
+$stmt = $conn->prepare("SELECT * FROM tasks WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
 $tasks = [];
 
 while ($row = $result->fetch_assoc()) {
@@ -34,20 +33,20 @@ while ($row = $result->fetch_assoc()) {
 echo json_encode($tasks);
 }
 
-function deleteTask($conn,$id){
+function deleteTask($conn,$id,$user_id){
 
-$stmt = $conn->prepare("DELETE FROM tasks WHERE id = ?");
-$stmt->bind_param("i", $id);
+$stmt = $conn->prepare("DELETE FROM tasks WHERE id = ? AND user_id = ?");
+$stmt->bind_param("ii", $id,$user_id);
 
 if ($stmt->execute()) {
     sendResponse("success" , "task deleted" , null , 201);
 }
 }
 
-function completeTask($conn,$id){
+function completeTask($conn,$id,$user_id){
 
-$stmt = $conn->prepare("UPDATE tasks SET is_done='done' WHERE id = ?");
-$stmt->bind_param("s", $id);
+$stmt = $conn->prepare("UPDATE tasks SET is_done='done' WHERE id = ? AND user_id = ?");
+$stmt->bind_param("ii", $id,$user_id);
 
 if ($stmt->execute()) {
     sendResponse("success" , "task completed" , null , 201);

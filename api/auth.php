@@ -1,6 +1,7 @@
 <?php 
-require "api\db.php";
+require 'api\db.php';
 require 'api\response.php';
+use Firebase\JWT\JWT;
 $data = json_decode(file_get_contents("php://input"), true);
 
 function register($conn,$data){
@@ -63,25 +64,30 @@ function login($conn,$data){
 $username = $data['username'];
 $password = $data['password'];
 
-$stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
-$stmt->bind_param("s", $username);
-$stmt->execute();
-
-$result = $stmt->get_result();
-
-if ($result->num_rows === 1) {
-    $user = $result->fetch_assoc();
-
-    if (password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['user_id'];
-        $_SESSION['username'] = $user['username'];
-        sendResponse("success", "you have succesfully logged in", ["user_id" => $user['user_id']], 201);
-
-    } else {
-        sendResponse("error" , "invalid password or email" , null , 400);
-    }
-} else {
-    sendResponse("error" , "user not found" , null , 400);
+if (isset($password) && isset($username)){
+    sendResponse("error" , "please fill in all the gaps" , null , 400);
 }
+    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+
+        if (password_verify($password, $user['password'])) {
+            $payload = [
+                "user_id" => $user['user_id'],
+                "username" => $user['username'],
+                "exp" => time() + JWT_EXPIRY
+            ];
+            $token = JWT::encode($payload, JWT_SECRET, 'HS256');
+            sendResponse("success", "Logged in successfully", ["token" => $token], 200);
+        } 
+        else { sendResponse("error" , "invalid password or email" , null , 400);
+        }
+    } 
+    else {sendResponse("error" , "user not found" , null , 400);
+    }
 }
 ?>

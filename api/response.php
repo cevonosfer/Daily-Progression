@@ -10,3 +10,4 @@ function sendResponse($status, $message, $data = null, $code = 200) {
 
     exit;
 }
+?>
