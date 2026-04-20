@@ -82,4 +82,7 @@ cron file with cat)
 bandit23 (again reading the cron file and
 making sense out of the bash script)
 
-
+gb8KRRCsshuZXI0tUuR6ypOFjiZbf3G8
+bandit24 (reading the cron file and
+writing a veeery basic script to copy 
+the password from bandit24 pass to our password file in temporary folder)
