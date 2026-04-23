@@ -86,3 +86,12 @@ gb8KRRCsshuZXI0tUuR6ypOFjiZbf3G8
 bandit24 (reading the cron file and
 writing a veeery basic script to copy 
 the password from bandit24 pass to our password file in temporary folder)
+
+iCi86ttT4KSNe1armKiwbQNmB3YJP3q4
+bandit25 (writing a bash script to brute force a daemon)
+
+s0773xxkk0MXfdqOfPRVr9L3jJBUOgCZ
+bandit26 (changing the shell with vim and there is a trick with 'more' command)
+
+upsNCc7vzaRDx6oZC6GiR6ERwe1MowGB
+bandit27 (running a command as another user)
