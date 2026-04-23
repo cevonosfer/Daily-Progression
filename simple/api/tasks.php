@@ -1,13 +1,4 @@
 <?php
-require 'api\db.php';
-require 'api\response.php';
-header("Content-Type: application/json");
-
-$method = $_SERVER['REQUEST_METHOD'];
-$data = json_decode(file_get_contents("php://input"), true);
-$user_id = authenticate();
-$id = $data['task_id'] ?? null;
-require 'api\router.php';
 
 function createTask($conn,$user_id,$data){
 $task = $data['task'];

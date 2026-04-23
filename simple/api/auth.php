@@ -1,6 +1,7 @@
 <?php 
-require 'api\db.php';
-require 'api\response.php';
+require '../api/db.php';
+require '../api/response.php';
+require '../vendor/autoload.php';
 use Firebase\JWT\JWT;
 $data = json_decode(file_get_contents("php://input"), true);
 
@@ -33,7 +34,7 @@ if (!preg_match("/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$
     sendResponse("error", "Weak password", null, 400);
 }
 
-$stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR mail = ?");
+$stmt = $conn->prepare("SELECT user_id FROM users WHERE username = ? OR mail = ?");
 $stmt->bind_param("ss", $username, $email);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -64,7 +65,7 @@ function login($conn,$data){
 $username = $data['username'];
 $password = $data['password'];
 
-if (isset($password) && isset($username)){
+if (!isset($password) || !isset($username)){
     sendResponse("error" , "please fill in all the gaps" , null , 400);
 }
     $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
@@ -90,4 +91,10 @@ if (isset($password) && isset($username)){
     else {sendResponse("error" , "user not found" , null , 400);
     }
 }
+
+
+$action = $data['action'] ?? '';
+if ($action === 'register') register($conn, $data);
+else if ($action === 'login') login($conn, $data);
+else sendResponse("error", "Unknown action", null, 400);
 ?>

@@ -1,7 +1,12 @@
 <?php
-require 'api\tasks.php';
-require 'api\middleware.php';
-require 'api\response.php';
+require '../vendor/autoload.php';
+require 'response.php';
+require 'db.php';
+require 'middleware.php';
+require 'tasks.php';
+
+header("Content-Type: application/json");
+$data = json_decode(file_get_contents("php://input"), true);
 $method = $_SERVER['REQUEST_METHOD'];
 $user_id = authenticate();
 $id = $data['task_id'] ?? null;
