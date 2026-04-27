@@ -1,11 +1,13 @@
 import argparse
 import socket 
+from threading import Lock,Thread
 
 parser = argparse.ArgumentParser(description = "basic tool")
 parser.add_argument("target" , help="ip or hostname")
 parser.add_argument("-p" ,"--ports" , nargs="+" , type=int , default=[80])
 args = parser.parse_args()
 
+lock = Lock()
 
 def iterator(host, port):
     try:
@@ -18,6 +20,12 @@ def iterator(host, port):
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
         print(f"closed : {port}")
 
-for port in args.ports:
-    iterator(args.target , port)
+threads = []
 
+for port in args.ports:
+    t = Thread(target = iterator , args=(args.target , port))
+    threads.append(t)
+    t.start()
+
+for t in threads:
+    t.join()
