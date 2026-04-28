@@ -95,3 +95,27 @@ bandit26 (changing the shell with vim and there is a trick with 'more' command)
 
 upsNCc7vzaRDx6oZC6GiR6ERwe1MowGB
 bandit27 (running a command as another user)
+
+Yz9IpL0sBcCeuG7m9uQFt8ZNpS4HZRcN
+bandit28 (ssh into git repo with custom port and cloned it)
+
+4pT1t5DENaYuqnqvadYs1oE4QLCdjmJ7
+bandit29 (git log and git show)
+
+qp30ex3VLz5MDG1n91YowTv4Q8l7CDZL
+bandit30 (git branch -a , git switch)
+
+fb5S2xb7bRyFmAvQYQGEqsbhVyJqhnDy
+bandit31 (git tag)
+
+3O9RfhqyAlVBEZpVb6LYStshZoqoSx5K
+bandit32 (making a specific file and pushing it)
+
+tQdtbs5D5i2vJwkO8mEyYEyTL8izoeJ0
+bandit33 (terminal doesnt accept anything so to breakout use $0 and then you can do anything such as "ls -la")
+
+the end
+bandit34 (the end)
+
+FINISHED ALL THE LEVELS!!!
+
