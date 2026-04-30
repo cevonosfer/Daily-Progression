@@ -3,12 +3,14 @@ import socket
 target_host = '127.0.0.1'
 target_port = 9999
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+while True:
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-client.connect((target_host, target_port))
+    client.connect((target_host, target_port))
 
-client.send("hello world".encode())
+    message = input("your message")
+    client.send(message.encode())
 
-response = client.recv(1024)
+    response = client.recv(1024)
 
-print(response.decode())
+    print(response.decode())
