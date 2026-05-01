@@ -4,11 +4,12 @@ import socket
 client = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
 client.connect(("localhost", 9999))
 
-file = open("python/text.txt" , "rb")
+file = open("python/text.txt", "rb")
 size = os.path.getsize("python/text.txt")
+name = os.path.basename("python/text.txt")
 
-details = f"received_text.txt\n{size}"
-client.send(details.encode())
+header = f"{name}\n{size}\n"
+client.send(header.encode())
 
 data = file.read()
 client.sendall(data)
