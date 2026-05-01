@@ -6,7 +6,7 @@ client.connect(("localhost", 9999))
 
 file = open("python/text.txt", "rb")
 size = os.path.getsize("python/text.txt")
-name = os.path.basename("python/text.txt")
+name = "sent_file.txt"
 
 header = f"{name}\n{size}\n"
 client.send(header.encode())
