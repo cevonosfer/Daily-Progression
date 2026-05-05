@@ -1,4 +1,5 @@
 import socket
+import caesar
 
 target_host = '127.0.0.1'
 target_port = 9999
@@ -9,7 +10,8 @@ while True:
     client.connect((target_host, target_port))
 
     message = input("your message")
-    client.send(message.encode())
+    encrypted = caesar.caesar_enc(shift=5,raw_text=message)
+    client.send(encrypted.encode())
 
     response = client.recv(1024)
 

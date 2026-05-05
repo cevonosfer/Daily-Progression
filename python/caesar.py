@@ -1,5 +1,5 @@
-def encrypter(shift,raw_text):
-    result = ""
+def caesar_enc(shift,raw_text):
+    result_encrypted = ""
 
     for i in raw_text:
         if i.isalpha():
@@ -9,9 +9,10 @@ def encrypter(shift,raw_text):
                 base_word = ord('A')
 
             encrypted = ((ord(i) - base_word + shift) % 26 + base_word)
-            result += chr(encrypted)
+            result_encrypted += chr(encrypted)
         else:
-            encrypted += result
-    print(result)
+            encrypted += result_encrypted
+    return(result_encrypted)
 
-encrypter(shift=5,raw_text = input("enter your text here: "))
+def caesar_dec(shift,raw_text):
+    return caesar_enc(-shift,raw_text)
