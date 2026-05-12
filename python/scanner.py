@@ -1,11 +1,10 @@
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 import socket
 import re
 import nvdlib
 from scapy.all import IP,TCP,sr1
-
-
-
 
 parser = argparse.ArgumentParser(description = "basic tool")
 parser.add_argument("-t", "--target", help="ip or hostname" )
@@ -15,7 +14,7 @@ parser.add_argument("-c", "--cve", action="store_true", help="enable cve lookup"
 parser.add_argument("-b", "--banner", action="store_true", help="enable banner grab")
 args = parser.parse_args()
 
-
+lock = Lock()
 
 PROBES = { #for ports that requires a request
     80: b"HEAD / HTTP/1.0\r\n\r\n",
@@ -30,8 +29,10 @@ def port_scan(host,port):
     try:
         s.settimeout(2)
         if s.connect_ex((host,port)) == 0:
+            with lock:
                 print(f"Open: {port}")
         else:
+            with lock:
                 print(f"Closed: {port}")
         s.close()
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
@@ -78,7 +79,7 @@ def TTL_time(port):
         return None
     
 def os_guess(ttl):
-    
+    with lock:
         if ttl is None:
             print("TTL not found")
         elif ttl <= 64:
@@ -90,7 +91,7 @@ def os_guess(ttl):
 
 def cve_lookup(banner):
     try:
-        
+        with lock: 
             if banner == None:
                 print("no banner found, skipping CVE lookup")
             else:
@@ -100,31 +101,39 @@ def cve_lookup(banner):
                 if not r: 
                     print (f"no CVE found for {banner}")
 
-    except Exception as e:   
+    except Exception as e: 
+        with lock:   
             print(f"failed {e}")
 
 #def alerts():
 #def utils():
 #These will be for transforming this to a discord bot
 
+def pseudo_main(host,port):
+    port_scan(host,port)
+    raw_banner = banner_grab(host, port)
+    if raw_banner:
+        banner = banner_extract(raw_banner)
+    else:
+        banner = None
+    if args.banner:
+        if banner:
+            with lock:
+                print(banner)
+        else:
+            with lock:
+                print("banner not found")
+    if args.detect:
+        os_guess(TTL_time(port))
+    if args.cve:
+        cve_lookup(banner)
 
 def main():
-    for port in args.port:
-        port_scan(args.target,port)
-        raw_banner = banner_grab(args.target, port)
-        if raw_banner:
-            banner = banner_extract(raw_banner)
-        else:
-            banner = None
-        if args.banner:
-            if banner:
-                    print(banner)
-            else:
-                    print("banner not found")
-        if args.detect:
-            os_guess(TTL_time(port))
-        if args.cve:
-            cve_lookup(banner)
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        executor.map(pseudo_main,
+                     [args.target] * len(args.port),
+                     args.port)
 
 if __name__ == "__main__": 
     main()
