@@ -42,12 +42,9 @@ def port_scan(host,port):
     try:
         s.settimeout(2)
         if s.connect_ex((host,port)) == 0:
-            with lock:
-                print(f"Open: {port}")
+            return True
         else:
-            with lock:
-                print(f"Closed: {port}")
-        s.close()
+            return False
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
         pass
 
@@ -89,57 +86,58 @@ def TTL_time(port):
     if packet and packet.haslayer(IP):
         return packet[IP].ttl
     else:
-        return None
-    
-def os_guess(ttl):
-    with lock:
-        if ttl is None:
-            print("TTL not found")
-        elif ttl <= 64:
-            print(f"TTL: {ttl} //Likely Linux/Unix")
-        elif ttl <= 128:
-            print(f"TTL: {ttl} //Likely Windows")
-        else:
-            print(f"TTL: {ttl} //Likely network device")  
+        return None   
 
 def cve_lookup(banner):
     try:
-        with lock: 
-            if banner == None:
-                print("no banner found, skipping CVE lookup")
-            else:
-                r = nvdlib.searchCVE(keywordSearch=banner , limit=3)
-                for eachCVE in r:
-                    print(f"CVEs found for {banner}, {eachCVE.id}, {str(eachCVE.score[0])}, {eachCVE.url}, {eachCVE.cpe}")
-                if not r: 
-                    print (f"no CVE found for {banner}")
+        if banner == None:
+            return ["no banner found, skipping CVE lookup"]
+        else:
+            r = nvdlib.searchCVE(keywordSearch=banner , limit=3)
+            for eachCVE in r:
+                return[f"CVEs found for {banner}, {eachCVE.id}, {str(eachCVE.score[0])}, {eachCVE.url}, {eachCVE.cpe}"]
+            if not r: 
+                return [f"no CVE found for {banner}"]
 
-    except Exception as e: 
-        with lock:   
-            print(f"failed {e}")
+    except Exception as e:   
+        return ["CVE lookup failed"]
 
 #def alerts():
 #def utils():
 #These will be for transforming this to a discord bot
 
 def pseudo_main(host,port):
-    port_scan(host,port)
-    raw_banner = banner_grab(host, port)
-    if raw_banner:
-        banner = banner_extract(raw_banner)
-    else:
-        banner = None
+    output = []
+
+    if port_scan(host,port) == True:
+        output.append(f"{port} :: open")
+        raw_banner = banner_grab(host, port)
+        if raw_banner:
+            banner = banner_extract(raw_banner)
+        else:
+            None
     if args.banner:
         if banner:
-            with lock:
-                print(banner)
+            output.append(f"banner :: {banner}")
         else:
-            with lock:
-                print("banner not found")
+            output.append("banner not found")
     if args.detect:
-        os_guess(TTL_time(port))
+        ttl = TTL_time(port)
+        if ttl is None:
+            output.append("TTL not found")
+        elif ttl <= 64:
+            output.append(f"TTL: {ttl} //Likely Linux/Unix")
+        elif ttl <= 128:
+            output.append(f"TTL: {ttl} //Likely Windows")
+        else:
+            output.append(f"TTL: {ttl} //Likely network device")
     if args.cve:
-        cve_lookup(banner)
+        cve = cve_lookup(banner)
+        for c in cve:
+            output.append(f"CVE :: {c}")
+
+    with lock:
+        print(output)
 
 def main():
     ports = port_range(args.port)
