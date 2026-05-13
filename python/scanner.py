@@ -8,7 +8,7 @@ from scapy.all import IP,TCP,sr1
 
 parser = argparse.ArgumentParser(description = "basic tool")
 parser.add_argument("-t", "--target", help="ip or hostname" )
-parser.add_argument("-p", "--port", nargs="+", type=int, help="port(s)")
+parser.add_argument("-p", "--port", help="port(s)")
 parser.add_argument("-o", "--detect", action="store_true", help="enable os detection")
 parser.add_argument("-c", "--cve", action="store_true", help="enable cve lookup")
 parser.add_argument("-b", "--banner", action="store_true", help="enable banner grab")
@@ -23,6 +23,19 @@ PROBES = { #for ports that requires a request
     #port
     #...
 }
+
+def port_range(port):
+
+    ports = []
+
+    if "-" in port:
+
+        start_ip,end_ip = map(int,port.split("-"))
+        ports.extend(range(start_ip,end_ip+1) )
+    else:
+        ports.append(int(port))
+
+    return ports
 
 def port_scan(host,port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -129,11 +142,11 @@ def pseudo_main(host,port):
         cve_lookup(banner)
 
 def main():
-
+    ports = port_range(args.port)
     with ThreadPoolExecutor(max_workers=10) as executor:
         executor.map(pseudo_main,
-                     [args.target] * len(args.port),
-                     args.port)
+                     [args.target] * len(ports),
+                     ports)
 
 if __name__ == "__main__": 
     main()
