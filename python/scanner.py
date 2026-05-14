@@ -30,10 +30,14 @@ def port_range(port):
 
     if "-" in port:
 
-        start_ip,end_ip = map(int,port.split("-"))
-        ports.extend(range(start_ip,end_ip+1) )
+        start,end = map(int,port.split("-"))
+        ports.extend(range(start,end+1) )
+    elif " " in port:
+        ports.extend(map(int, port.split(",")))
     else:
         ports.append(int(port))
+    if start < 1 or end > 65535:
+        raise ValueError("invalid port range")
 
     return ports
 
@@ -46,26 +50,10 @@ def port_scan(host,port):
         else:
             return False
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
-        pass
+        return False
 
 def banner_grab(host,port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        s.settimeout(2)
-        s.connect((host, port))
-        if port in PROBES:
-            s.send(PROBES.get(port))
-        
-        banner = s.recv(1024)
-        s.close()
-        return banner.decode(errors="ignore").strip()
-    except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
-        return None 
-
-def banner_extract(banner):
-    if banner is None:
-        return None
-    banner = banner.lower()
     patterns = [
         r"(openssh[_\- ]\d+[\w\.]*)",
         r"(apache/?[\d\.]+)",
@@ -73,13 +61,28 @@ def banner_extract(banner):
         r"(vsftpd[\d\.]*)",
         r"(proftpd[\d\.]*)",
     ]
-
-    for p in patterns:
-        match = re.search(p, banner)
-        if match:
-            return match.group(0)
+    
+    try:
+        s.settimeout(2)
+        s.connect((host, port))
+        if port in PROBES:
+            s.send(PROBES.get(port))
         
-    return banner.split()[0][:50]
+        raw_banner = s.recv(1024)
+        banner = raw_banner.decode(errors="ignore").strip()
+        banner = banner.lower()
+        s.close()
+        if banner is None:
+            return None
+        else:
+            for p in patterns:
+                match = re.search(p, banner)
+                if match:
+                    return match.group(0)
+            return banner.split()[0][:50]
+        
+    except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
+        return None 
 
 def TTL_time(port):
     packet = sr1(IP(dst=args.target)/TCP(dport=(port),flags="S"),verbose=0,timeout=1)
@@ -107,44 +110,64 @@ def cve_lookup(banner):
 #These will be for transforming this to a discord bot
 
 def pseudo_main(host,port):
-    output = []
+    output = {
+        "port": port,
+        "state": "closed",
+        "banner": None,
+        "ttl": None,
+        "os": None,
+        "cves": []
+    }
 
     if port_scan(host,port) == True:
-        output.append(f"{port} :: open")
-        raw_banner = banner_grab(host, port)
-        if raw_banner:
-            banner = banner_extract(raw_banner)
-        else:
-            None
-    if args.banner:
-        if banner:
-            output.append(f"banner :: {banner}")
-        else:
-            output.append("banner not found")
-    if args.detect:
-        ttl = TTL_time(port)
-        if ttl is None:
-            output.append("TTL not found")
-        elif ttl <= 64:
-            output.append(f"TTL: {ttl} //Likely Linux/Unix")
-        elif ttl <= 128:
-            output.append(f"TTL: {ttl} //Likely Windows")
-        else:
-            output.append(f"TTL: {ttl} //Likely network device")
-    if args.cve:
-        cve = cve_lookup(banner)
-        for c in cve:
-            output.append(f"CVE :: {c}")
-
-    with lock:
-        print(output)
+        output["state"] = "open"
+        if args.banner:
+            banner = banner_grab(host, port)
+            if banner:
+                output["banner"] = banner
+            else:
+                output["banner"] = "N/A"
+        if args.detect:
+            ttl = TTL_time(port)
+            output["ttl"] = ttl
+            if ttl is None:
+                output["ttl"] = "N/A"
+            elif ttl <= 64:
+                output["os"] = "linux"
+            elif ttl <= 128:
+                output["os"] = "windows"
+            else:
+                output["os"] = "network device"
+        if args.cve:
+            output["cves"] = cve_lookup(output["banner"])
+    return output
 
 def main():
     ports = port_range(args.port)
     with ThreadPoolExecutor(max_workers=10) as executor:
-        executor.map(pseudo_main,
+        output = list(executor.map(pseudo_main,
                      [args.target] * len(ports),
-                     ports)
+                     ports))
+    for r in output:
+        if r["state"] == "open":
+
+            print(f"\nPort: {r['port']}")
+            print(f"State: {r['state']}")
+
+            if args.banner:
+                print(f"Banner: {r['banner']}")
+
+            if args.detect:
+                print(f"TTL: {r['ttl']}")
+                print(f"OS Guess: {r['os']}")
+
+            if args.cve:
+                print("CVEs:")
+
+                for cve in r["cves"]:
+                    print(f"  {cve}")
+
+            print("-" * 40)
 
 if __name__ == "__main__": 
     main()
