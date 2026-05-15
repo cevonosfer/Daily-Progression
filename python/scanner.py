@@ -18,10 +18,11 @@ lock = Lock()
 
 PROBES = { #for ports that requires a request
     80: b"HEAD / HTTP/1.0\r\n\r\n",
-    #port
-    #port
-    #port
-    #...
+    21: b"USER anonymous\r\n",
+    25: b"EHLO example.com\r\n",
+    143: b"A001 CAPABILITY\r\n",
+    6379: b"PING\r\n",
+    "generic": b"\r\n",
 }
 
 def port_range(port):
@@ -78,6 +79,8 @@ def banner_grab(host,port):
         s.connect((host, port))
         if port in PROBES:
             s.send(PROBES.get(port))
+        else:
+            s.send(PROBES.get("generic"))
         
         raw_banner = s.recv(1024)
         banner = raw_banner.decode(errors="ignore").strip()
