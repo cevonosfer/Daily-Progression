@@ -4,7 +4,7 @@ from threading import Lock
 import socket
 import re
 import nvdlib
-from scapy.all import IP,TCP,sr1
+from scapy.all import IP,TCP,sr1,ICMP,send
 
 parser = argparse.ArgumentParser(description = "basic tool")
 parser.add_argument("-t", "--target", help="ip or hostname" )
@@ -29,28 +29,39 @@ def port_range(port):
     ports = []
 
     if "-" in port:
-
         start,end = map(int,port.split("-"))
         ports.extend(range(start,end+1) )
-    elif " " in port:
+    elif "," in port:
         ports.extend(map(int, port.split(",")))
     else:
         ports.append(int(port))
-    if start < 1 or end > 65535:
-        raise ValueError("invalid port range")
-
+    for p in ports:
+        if p < 1 or p > 65535:
+            raise ValueError("invalid port")
     return ports
 
+def is_host_up(host):
+    packet = sr1(IP(dst=host)/ICMP(),timeout=0.5) #ping the host to see its up 
+    if packet == None:
+        return {"host": "down"}
+    else:
+        return {"host": "up"}
+
 def port_scan(host,port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        s.settimeout(2)
-        if s.connect_ex((host,port)) == 0:
-            return True
-        else:
-            return False
+        packet = sr1(IP(dst=host)/TCP(dport=port, flags="S"),timeout=1,verbose=0)
+        if packet is None:
+            return {"state": "filtered"}
+        if packet.haslayer(TCP):
+            flags = packet[TCP].flags
+            if flags == 0x12: #SYN-ACK
+                send(IP(dst=host) /TCP(dport=port, flags="R"),verbose=0) # send RST to close half open ports
+                return {"state": "open"}
+            elif flags == 0x14: #RST-ACK 
+                return {"state": " closed"}
+        return {"state": "unknown"}
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
-        return False
+        return {"state": "closed"}
 
 def banner_grab(host,port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -72,14 +83,14 @@ def banner_grab(host,port):
         banner = raw_banner.decode(errors="ignore").strip()
         banner = banner.lower()
         s.close()
-        if banner is None:
+        if not banner:
             return None
         else:
             for p in patterns:
                 match = re.search(p, banner)
                 if match:
-                    return match.group(0)
-            return banner.split()[0][:50]
+                    return {"banner": match.group(0)}
+            return {"banner": banner.split()[0][:50]}
         
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
         return None 
@@ -87,23 +98,23 @@ def banner_grab(host,port):
 def TTL_time(port):
     packet = sr1(IP(dst=args.target)/TCP(dport=(port),flags="S"),verbose=0,timeout=1)
     if packet and packet.haslayer(IP):
-        return packet[IP].ttl
+        return {"ttl": packet[IP].ttl}
     else:
-        return None   
+        return None  
 
 def cve_lookup(banner):
     try:
         if banner == None:
-            return ["no banner found, skipping CVE lookup"]
+            return {"cves": "no banner found, skipping CVE lookup"}
         else:
             r = nvdlib.searchCVE(keywordSearch=banner , limit=3)
             for eachCVE in r:
-                return[f"CVEs found for {banner}, {eachCVE.id}, {str(eachCVE.score[0])}, {eachCVE.url}, {eachCVE.cpe}"]
+                return {"cves": f"CVEs found for {banner}, {eachCVE.id}, {str(eachCVE.score[0])}, {eachCVE.url}, {eachCVE.cpe}"}
             if not r: 
-                return [f"no CVE found for {banner}"]
+                return {"cves": f"no CVE found for {banner}"}
 
     except Exception as e:   
-        return ["CVE lookup failed"]
+        return {"cves": "CVE lookup failed"}
 
 #def alerts():
 #def utils():
@@ -111,6 +122,7 @@ def cve_lookup(banner):
 
 def pseudo_main(host,port):
     output = {
+        "host": host,
         "port": port,
         "state": "closed",
         "banner": None,
@@ -118,19 +130,21 @@ def pseudo_main(host,port):
         "os": None,
         "cves": []
     }
+    port_result = port_scan(host,port)
+    output.update(port_result)
 
-    if port_scan(host,port) == True:
-        output["state"] = "open"
+    if output["state"] == "open":
         if args.banner:
-            banner = banner_grab(host, port)
-            if banner:
-                output["banner"] = banner
+            banner_result = banner_grab(host, port)
+            if banner_result:
+                output.update(banner_result)
             else:
                 output["banner"] = "N/A"
         if args.detect:
-            ttl = TTL_time(port)
-            output["ttl"] = ttl
-            if ttl is None:
+            ttl_result = TTL_time(port)
+            output.update(ttl_result)
+            ttl = output["ttl"]
+            if ttl == None:
                 output["ttl"] = "N/A"
             elif ttl <= 64:
                 output["os"] = "linux"
@@ -139,7 +153,8 @@ def pseudo_main(host,port):
             else:
                 output["os"] = "network device"
         if args.cve:
-            output["cves"] = cve_lookup(output["banner"])
+            cve_result = cve_lookup(output["banner"])
+            output.update(cve_result)
     return output
 
 def main():
@@ -163,9 +178,7 @@ def main():
 
             if args.cve:
                 print("CVEs:")
-
-                for cve in r["cves"]:
-                    print(f"  {cve}")
+                print(r["cves"])
 
             print("-" * 40)
 
