@@ -2,6 +2,7 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import aiohttp
+import time 
 
 
 BASE_URL = "http://scanme.nmap.org"
@@ -33,6 +34,7 @@ async def check_path(session: aiohttp.ClientSession, path, sem):
             print(f"error :: {url}")
 
 async def main():
+    start = time.perf_counter()
     words = load_words()
 
     print(f"starting scan on {BASE_URL}")
@@ -48,6 +50,7 @@ async def main():
     for url, code in found_paths:
         if code != 404:
             print(f"{code} :: {url}")
+    print(f"\nScan completed in {time.perf_counter() - start:.2f}s")
 
 if __name__ == "__main__":
     asyncio.run(main())

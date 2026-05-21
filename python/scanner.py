@@ -4,6 +4,7 @@ import socket
 import re
 import nvdlib
 from scapy.all import IP,TCP,sr1,ICMP,send
+import time 
 
 parser = argparse.ArgumentParser(description = "basic tool")
 parser.add_argument("-t", "--target", help="ip or hostname" )
@@ -161,6 +162,7 @@ async def pseudo_main(host,port,sem):
     return output
 
 async def main():
+    start = time.perf_counter()
     ports = port_range(args.port)
     sem = asyncio.Semaphore(args.threads)
     tasks = [pseudo_main(args.target, p, sem) for p in ports]
@@ -184,6 +186,7 @@ async def main():
                 print(r["cves"])
 
             print("-" * 40)
+    print(f"\nScan completed in {time.perf_counter() - start:.2f}s")
 
 if __name__ == "__main__": 
     asyncio.run(main())
