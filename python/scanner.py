@@ -49,13 +49,13 @@ def is_host_up(host):
 
 async def port_scan(host,port):
     try:
-        packet = sr1(IP(dst=host)/TCP(dport=port, flags="S"),timeout=1,verbose=0)
+        packet = await asyncio.to_thread(sr1, IP(dst=host)/TCP(dport=port, flags="S"),timeout=1,verbose=0)
         if packet is None:
             return {"state": "filtered"}
         if packet.haslayer(TCP):
             flags = packet[TCP].flags
             if flags == 0x12: #SYN-ACK
-                send(IP(dst=host) /TCP(dport=port, flags="R"),verbose=0) # send RST to close half open ports
+                await asyncio.to_thread(send, IP(dst=host) /TCP(dport=port, flags="R"),verbose=0) # send RST to close half open ports
                 return {"state": "open"}
             elif flags == 0x14: #RST-ACK 
                 return {"state": " closed"}
@@ -64,41 +64,43 @@ async def port_scan(host,port):
         return {"state": "closed"}
 
 async def banner_grab(host,port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    patterns = [
-        r"(openssh[_\- ]\d+[\w\.]*)",
-        r"(apache/?[\d\.]+)",
-        r"(nginx/?[\d\.]+)",
-        r"(vsftpd[\d\.]*)",
-        r"(proftpd[\d\.]*)",
-    ]
-    
-    try:
-        s.settimeout(2)
-        s.connect((host, port))
-        if port in PROBES:
-            s.send(PROBES.get(port))
-        else:
-            s.send(PROBES.get("generic"))
+    def grab():
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        patterns = [
+            r"(openssh[_\- ]\d+[\w\.]*)",
+            r"(apache/?[\d\.]+)",
+            r"(nginx/?[\d\.]+)",
+            r"(vsftpd[\d\.]*)",
+            r"(proftpd[\d\.]*)",
+        ]
         
-        raw_banner = s.recv(1024)
-        banner = raw_banner.decode(errors="ignore").strip()
-        banner = banner.lower()
-        s.close()
-        if not banner:
-            return None
-        else:
-            for p in patterns:
-                match = re.search(p, banner)
-                if match:
-                    return {"banner": match.group(0)}
-            return {"banner": banner.split()[0][:50]}
-        
-    except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
-        return None 
+        try:
+            s.settimeout(2)
+            s.connect((host, port))
+            if port in PROBES:
+                s.send(PROBES.get(port))
+            else:
+                s.send(PROBES.get("generic"))
+            
+            raw_banner = s.recv(1024)
+            banner = raw_banner.decode(errors="ignore").strip()
+            banner = banner.lower()
+            s.close()
+            if not banner:
+                return None
+            else:
+                for p in patterns:
+                    match = re.search(p, banner)
+                    if match:
+                        return {"banner": match.group(0)}
+                return {"banner": banner.split()[0][:50]}
+            
+        except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
+            return None 
+    return await asyncio.to_thread(grab)
 
 async def TTL_time(port):
-    packet = sr1(IP(dst=args.target)/TCP(dport=(port),flags="S"),verbose=0,timeout=1)
+    packet = await asyncio.to_thread(sr1, IP(dst=args.target)/TCP(dport=(port),flags="S"),verbose=0,timeout=1)
     if packet and packet.haslayer(IP):
         return {"ttl": packet[IP].ttl}
     else:
