@@ -1,10 +1,11 @@
 import argparse
-import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 import socket
 import re
 import nvdlib
 from scapy.all import IP,TCP,sr1,ICMP,send
-import time 
+import time
 
 parser = argparse.ArgumentParser(description = "basic tool")
 parser.add_argument("-t", "--target", help="ip or hostname" )
@@ -12,8 +13,9 @@ parser.add_argument("-p", "--port", help="port(s)")
 parser.add_argument("-o", "--detect", action="store_true", help="enable os detection")
 parser.add_argument("-c", "--cve", action="store_true", help="enable cve lookup")
 parser.add_argument("-b", "--banner", action="store_true", help="enable banner grab")
-parser.add_argument("-s", "--threads", help="thread count", type=int, default=20)
 args = parser.parse_args()
+
+lock = Lock()
 
 PROBES = { #for ports that requires a request
     80: b"HEAD / HTTP/1.0\r\n\r\n",
@@ -47,15 +49,15 @@ def is_host_up(host):
     else:
         return {"host": "up"}
 
-async def port_scan(host,port):
+def port_scan(host,port):
     try:
-        packet = await asyncio.to_thread(sr1, IP(dst=host)/TCP(dport=port, flags="S"),timeout=1,verbose=0)
+        packet = sr1(IP(dst=host)/TCP(dport=port, flags="S"),timeout=1,verbose=0)
         if packet is None:
             return {"state": "filtered"}
         if packet.haslayer(TCP):
             flags = packet[TCP].flags
             if flags == 0x12: #SYN-ACK
-                await asyncio.to_thread(send, IP(dst=host) /TCP(dport=port, flags="R"),verbose=0) # send RST to close half open ports
+                send(IP(dst=host) /TCP(dport=port, flags="R"),verbose=0) # send RST to close half open ports
                 return {"state": "open"}
             elif flags == 0x14: #RST-ACK 
                 return {"state": " closed"}
@@ -63,50 +65,48 @@ async def port_scan(host,port):
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
         return {"state": "closed"}
 
-async def banner_grab(host,port):
-    def grab():
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        patterns = [
-            r"(openssh[_\- ]\d+[\w\.]*)",
-            r"(apache/?[\d\.]+)",
-            r"(nginx/?[\d\.]+)",
-            r"(vsftpd[\d\.]*)",
-            r"(proftpd[\d\.]*)",
-        ]
+def banner_grab(host,port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    patterns = [
+        r"(openssh[_\- ]\d+[\w\.]*)",
+        r"(apache/?[\d\.]+)",
+        r"(nginx/?[\d\.]+)",
+        r"(vsftpd[\d\.]*)",
+        r"(proftpd[\d\.]*)",
+    ]
+    
+    try:
+        s.settimeout(2)
+        s.connect((host, port))
+        if port in PROBES:
+            s.send(PROBES.get(port))
+        else:
+            s.send(PROBES.get("generic"))
         
-        try:
-            s.settimeout(2)
-            s.connect((host, port))
-            if port in PROBES:
-                s.send(PROBES.get(port))
-            else:
-                s.send(PROBES.get("generic"))
-            
-            raw_banner = s.recv(1024)
-            banner = raw_banner.decode(errors="ignore").strip()
-            banner = banner.lower()
-            s.close()
-            if not banner:
-                return None
-            else:
-                for p in patterns:
-                    match = re.search(p, banner)
-                    if match:
-                        return {"banner": match.group(0)}
-                return {"banner": banner.split()[0][:50]}
-            
-        except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
-            return None 
-    return await asyncio.to_thread(grab)
+        raw_banner = s.recv(1024)
+        banner = raw_banner.decode(errors="ignore").strip()
+        banner = banner.lower()
+        s.close()
+        if not banner:
+            return None
+        else:
+            for p in patterns:
+                match = re.search(p, banner)
+                if match:
+                    return {"banner": match.group(0)}
+            return {"banner": banner.split()[0][:50]}
+        
+    except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
+        return None 
 
-async def TTL_time(port):
-    packet = await asyncio.to_thread(sr1, IP(dst=args.target)/TCP(dport=(port),flags="S"),verbose=0,timeout=1)
+def TTL_time(port):
+    packet = sr1(IP(dst=args.target)/TCP(dport=(port),flags="S"),verbose=0,timeout=1)
     if packet and packet.haslayer(IP):
         return {"ttl": packet[IP].ttl}
     else:
         return None  
 
-async def cve_lookup(banner):
+def cve_lookup(banner):
     try:
         if banner == None:
             return {"cves": "no banner found, skipping CVE lookup"}
@@ -124,7 +124,7 @@ async def cve_lookup(banner):
 #def utils():
 #These will be for transforming this to a discord bot
 
-async def pseudo_main(host,port,sem):
+def pseudo_main(host,port):
     output = {
         "host": host,
         "port": port,
@@ -134,42 +134,40 @@ async def pseudo_main(host,port,sem):
         "os": None,
         "cves": []
     }
-    
-    async with sem:
-        port_result = await port_scan(host,port)
-        output.update(port_result)
+    port_result = port_scan(host,port)
+    output.update(port_result)
 
-        if output["state"] == "open":
-            if args.banner:
-                banner_result = await banner_grab(host, port)
-                if banner_result:
-                    output.update(banner_result)
-                else:
-                    output["banner"] = "N/A"
-            if args.detect:
-                ttl_result = await TTL_time(port)
-                output.update(ttl_result)
-                ttl = output["ttl"]
-                if ttl == None:
-                    output["ttl"] = "N/A"
-                elif ttl <= 64:
-                    output["os"] = "linux"
-                elif ttl <= 128:
-                    output["os"] = "windows"
-                else:
-                    output["os"] = "network device"
-            if args.cve:
-                cve_result = await cve_lookup(output["banner"])
-                output.update(cve_result)
+    if output["state"] == "open":
+        if args.banner:
+            banner_result = banner_grab(host, port)
+            if banner_result:
+                output.update(banner_result)
+            else:
+                output["banner"] = "N/A"
+        if args.detect:
+            ttl_result = TTL_time(port)
+            output.update(ttl_result)
+            ttl = output["ttl"]
+            if ttl == None:
+                output["ttl"] = "N/A"
+            elif ttl <= 64:
+                output["os"] = "linux"
+            elif ttl <= 128:
+                output["os"] = "windows"
+            else:
+                output["os"] = "network device"
+        if args.cve:
+            cve_result = cve_lookup(output["banner"])
+            output.update(cve_result)
     return output
 
-async def main():
+def main():
     start = time.perf_counter()
     ports = port_range(args.port)
-    sem = asyncio.Semaphore(args.threads)
-    tasks = [pseudo_main(args.target, p, sem) for p in ports]
-    output = await asyncio.gather(*tasks)
-
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        output = list(executor.map(pseudo_main,
+                     [args.target] * len(ports),
+                     ports))
     for r in output:
         if r["state"] == "open":
 
@@ -191,4 +189,4 @@ async def main():
     print(f"\nScan completed in {time.perf_counter() - start:.2f}s")
 
 if __name__ == "__main__": 
-    asyncio.run(main())
+    main()
