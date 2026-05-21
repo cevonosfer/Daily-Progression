@@ -1,6 +1,5 @@
 import argparse
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
+import asyncio
 import socket
 import re
 import nvdlib
@@ -12,9 +11,8 @@ parser.add_argument("-p", "--port", help="port(s)")
 parser.add_argument("-o", "--detect", action="store_true", help="enable os detection")
 parser.add_argument("-c", "--cve", action="store_true", help="enable cve lookup")
 parser.add_argument("-b", "--banner", action="store_true", help="enable banner grab")
+parser.add_argument("-s", "--threads", help="thread count", type=int, default=20)
 args = parser.parse_args()
-
-lock = Lock()
 
 PROBES = { #for ports that requires a request
     80: b"HEAD / HTTP/1.0\r\n\r\n",
@@ -48,7 +46,7 @@ def is_host_up(host):
     else:
         return {"host": "up"}
 
-def port_scan(host,port):
+async def port_scan(host,port):
     try:
         packet = sr1(IP(dst=host)/TCP(dport=port, flags="S"),timeout=1,verbose=0)
         if packet is None:
@@ -64,7 +62,7 @@ def port_scan(host,port):
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
         return {"state": "closed"}
 
-def banner_grab(host,port):
+async def banner_grab(host,port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     patterns = [
         r"(openssh[_\- ]\d+[\w\.]*)",
@@ -98,14 +96,14 @@ def banner_grab(host,port):
     except (socket.timeout , ConnectionRefusedError , ConnectionResetError , OSError):
         return None 
 
-def TTL_time(port):
+async def TTL_time(port):
     packet = sr1(IP(dst=args.target)/TCP(dport=(port),flags="S"),verbose=0,timeout=1)
     if packet and packet.haslayer(IP):
         return {"ttl": packet[IP].ttl}
     else:
         return None  
 
-def cve_lookup(banner):
+async def cve_lookup(banner):
     try:
         if banner == None:
             return {"cves": "no banner found, skipping CVE lookup"}
@@ -123,7 +121,7 @@ def cve_lookup(banner):
 #def utils():
 #These will be for transforming this to a discord bot
 
-def pseudo_main(host,port):
+async def pseudo_main(host,port,sem):
     output = {
         "host": host,
         "port": port,
@@ -133,39 +131,41 @@ def pseudo_main(host,port):
         "os": None,
         "cves": []
     }
-    port_result = port_scan(host,port)
-    output.update(port_result)
+    
+    async with sem:
+        port_result = await port_scan(host,port)
+        output.update(port_result)
 
-    if output["state"] == "open":
-        if args.banner:
-            banner_result = banner_grab(host, port)
-            if banner_result:
-                output.update(banner_result)
-            else:
-                output["banner"] = "N/A"
-        if args.detect:
-            ttl_result = TTL_time(port)
-            output.update(ttl_result)
-            ttl = output["ttl"]
-            if ttl == None:
-                output["ttl"] = "N/A"
-            elif ttl <= 64:
-                output["os"] = "linux"
-            elif ttl <= 128:
-                output["os"] = "windows"
-            else:
-                output["os"] = "network device"
-        if args.cve:
-            cve_result = cve_lookup(output["banner"])
-            output.update(cve_result)
+        if output["state"] == "open":
+            if args.banner:
+                banner_result = await banner_grab(host, port)
+                if banner_result:
+                    output.update(banner_result)
+                else:
+                    output["banner"] = "N/A"
+            if args.detect:
+                ttl_result = await TTL_time(port)
+                output.update(ttl_result)
+                ttl = output["ttl"]
+                if ttl == None:
+                    output["ttl"] = "N/A"
+                elif ttl <= 64:
+                    output["os"] = "linux"
+                elif ttl <= 128:
+                    output["os"] = "windows"
+                else:
+                    output["os"] = "network device"
+            if args.cve:
+                cve_result = await cve_lookup(output["banner"])
+                output.update(cve_result)
     return output
 
-def main():
+async def main():
     ports = port_range(args.port)
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        output = list(executor.map(pseudo_main,
-                     [args.target] * len(ports),
-                     ports))
+    sem = asyncio.Semaphore(args.threads)
+    tasks = [pseudo_main(args.target, p, sem) for p in ports]
+    output = await asyncio.gather(*tasks)
+
     for r in output:
         if r["state"] == "open":
 
@@ -186,4 +186,4 @@ def main():
             print("-" * 40)
 
 if __name__ == "__main__": 
-    main()
+    asyncio.run(main())

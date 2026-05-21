@@ -1,8 +1,10 @@
 import requests
 from concurrent.futures import ThreadPoolExecutor
+import asyncio
+import aiohttp
 
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "http://scanme.nmap.org"
 WORDLIST_FILE = "python\web_dir_brute_forcer\wordlist.txt"
 
 found_paths = []
@@ -17,33 +19,35 @@ def load_words():
                 words.append(line)
         return words
 
-def check_path(path):
+async def check_path(session: aiohttp.ClientSession, path, sem):
     url = f"{BASE_URL}/{path}"
+    async with sem:
+        try:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as r:
 
-    try:
-        r = requests.get(url, timeout=2)
+                if r.status in [200, 301, 302, 403]: #useful codes 200:ok , 301,302:redirect , 403:exists but denied
+                    print(f"{r.status} :: {url}")
+                    found_paths.append((url, r.status))
 
-        if r.status_code in [200, 301, 302, 403]: #useful codes 200:ok , 301,302:redirect , 403:exists but denied
-            print(f"{r.status_code} :: {url}")
-            found_paths.append((url, r.status_code))
+        except requests.RequestException:
+            print(f"error :: {url}")
 
-        else:
-            print(f"{r.status_code} :: {url}")
-
-    except requests.RequestException:
-        print(f"error :: {url}")
-
-def main():
+async def main():
     words = load_words()
 
     print(f"starting scan on {BASE_URL}")
     print(f"loaded {len(words)} paths\n")
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        executor.map(check_path, words)
+    sem = asyncio.Semaphore(100)
+
+    async with aiohttp.ClientSession() as session:
+        tasks = [check_path(session, word, sem) for word in words]
+        await asyncio.gather(*tasks)
 
     print(f"Found {len(found_paths)} interesting paths")
-    print(f"found URLs : {found_paths}")
+    for url, code in found_paths:
+        if code != 404:
+            print(f"{code} :: {url}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
