@@ -6,7 +6,7 @@ import argparse
 parser = argparse.ArgumentParser(description="recursive web dir brute forcer")
 parser.add_argument("-u", "--url", help="base url")
 parser.add_argument("-w", "--wordlist", help="wordlist file")
-parser.add_argument("-d", "--depth", help="recursiveness depth", type=int, default=3)
+parser.add_argument("-d", "--depth", help="recursiveness depth", type=int, default=1)
 args = parser.parse_args()
 
 BASE_URL = "http://scanme.nmap.org"
@@ -65,8 +65,10 @@ async def main():
         await scan(session, BASE_URL, paths, sem, args.depth)
 
     print(f"Found {len(found_paths)} interesting paths")
-    for url, code in found_paths:
-        print(f"{code} :: {url}")
+    with open("python/web_dir_brute_forcer/saved.txt", "w") as f:
+        for url, code in found_paths:
+            f.write(f"{code} :: {url}\n")
+    
     print(f"\nScan completed in {time.perf_counter() - start:.2f}s")
 
 if __name__ == "__main__":

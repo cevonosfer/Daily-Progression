@@ -1,0 +1,10 @@
+403 :: http://scanme.nmap.org/.hta
+403 :: http://scanme.nmap.org/.htaccess
+403 :: http://scanme.nmap.org/.htpasswd
+403 :: http://scanme.nmap.org/.svn/entries
+403 :: http://scanme.nmap.org/.svn
+403 :: http://scanme.nmap.org/favicon.ico
+200 :: http://scanme.nmap.org/index
+200 :: http://scanme.nmap.org/index.html
+200 :: http://scanme.nmap.org/images
+403 :: http://scanme.nmap.org/shared
