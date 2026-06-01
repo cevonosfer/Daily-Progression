@@ -10,7 +10,7 @@ parser.add_argument("-d", "--depth", help="recursiveness depth", type=int, defau
 args = parser.parse_args()
 
 BASE_URL = "http://scanme.nmap.org"
-WORDLIST_FILE = "python\web_dir_brute_forcer\wordlist.txt"
+WORDLIST_FILE = "python\wordlist\web_dir_wordlist.txt"
 
 found_paths = []
 visited = set()
