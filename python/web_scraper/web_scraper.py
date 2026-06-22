@@ -1,7 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
 import time
+import json 
 
+
+data = []
 for i in range(1,51):
 
     try:
@@ -18,6 +21,9 @@ for i in range(1,51):
     for book in books:
         title = book.find('h3').find('a')['title']
         price = book.find('p', class_='price_color').text
-        print(f"{title} — {price}")
+        data.append({"title": title, "price": price})
     time.sleep(0.5)
+
+with open("books.json", "w", encoding="utf-8") as f:
+      json.dump(data, f, indent=2, ensure_ascii=False)
 
