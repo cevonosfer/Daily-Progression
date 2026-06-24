@@ -16,14 +16,15 @@ for i in range(1,51):
         continue    
 
     soup = BeautifulSoup(r.text, 'html.parser')
-    books = soup.find_all('article', class_='product_pod')
+    books = soup.select('article.product_pod')
 
     for book in books:
-        title = book.find('h3').find('a')['title']
-        price = book.find('p', class_='price_color').text
-        data.append({"title": title, "price": price})
+        title = book.select_one('h3 a')['title']
+        price = book.select_one('p.price_color').text
+        star = book.select_one('p.star-rating')['class'][1]
+        data.append({"title": title, "price": price, "star-rating":star})
     time.sleep(0.5)
 
-with open("books.json", "w", encoding="utf-8") as f:
-      json.dump(data, f, indent=2, ensure_ascii=False)
+with open("python/web_scraper/books.json", "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
 
